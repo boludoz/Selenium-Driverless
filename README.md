@@ -1,4 +1,4 @@
-# Driverless (Non-commercial use only!)
+# Driverless (Non-commercial)
 
 Note: This project is moving away from the selenium syntax
 
