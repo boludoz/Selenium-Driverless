@@ -33,14 +33,28 @@ pip install https://github.com/kaliiiiiiiiii/Selenium-Driverless/archive/refs/he
 
 ## Sponsors
 
-<a href="https://www.capsolver.com/?utm_source=github&utm_medium=banner_github&utm_campaign=driverless" target="_blank">
-  <img src="https://camo.githubusercontent.com/ea2183be9dcdaa43d47a39d67609bf8fbb6430ce5400a39ce6a4cdd7b08e0a89/68747470733a2f2f732e76796a6176612e78797a2f66696c65732f323032342f31322d446563656d6265722f31372f35346531646230652f636170736f6c7665722e6a7067" alt="Capsolver Banner" style="height: 40vh; width: auto;"">
-</a>
-
-
-[Capsolver.com](https://www.capsolver.com/?utm_source=github&utm_medium=banner_github&utm_campaign=driverless) – AI captcha solver. Supports reCAPTCHA V2 / V3, DataDome, AWS WAF, Geetest, Cloudflare Turnstile / Challenge 5s, Imperva. API integration, browser extensions for Chrome, Firefox. Dev-friendly. Flexible pricing. \
-Docs: [docs.capsolver.com](https://docs.capsolver.com?utm_source=github&utm_medium=banner_github&utm_campaign=driverless)
-
+<table>
+  <tr>
+    <td  style="vertical-align: left>
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/scrapelesshq/scrapelesshq/main/images/scrapeless-dark.png">
+        <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/scrapelesshq/scrapelesshq/main/images/scrapeless-light.png">
+        <img alt="Scrapeless" src="https://raw.githubusercontent.com/scrapelesshq/scrapelesshq/main/images/scrapeless-light.png" height="300vh">
+      </picture>
+    </td>
+    <td style="font-size: 0.9em; vertical-align: right;">
+      <h4 align="center">
+        <b><a href="https://app.scrapeless.com/passport/login?utm_source=github&utm_medium=banner&utm_campaign=driverless">Get Started</a></b>
+      </h4>
+      <ul style="text-align: center; padding-left: 0;">
+        <li><a href="https://docs.scrapeless.com/en/overview/?utm_source=github&utm_medium=banner&utm_campaign=driverless">Docs</a></li>
+        <li><a href="https://discord.com/invite/xBcTfGPjCQ">Community</a></li>
+        <li><a href="https://www.scrapeless.com/en/?utm_source=github&utm_medium=banner&utm_campaign=driverless">Official Website</a></li>
+        <li><a href="https://apidocs.scrapeless.com/?utm_source=github&utm_medium=banner&utm_campaign=driverless">API Reference</a></li>
+      </ul>
+    </td>
+  </tr>
+</table>
 
 ### Dependencies
 
