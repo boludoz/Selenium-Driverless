@@ -37,14 +37,14 @@ pip install https://github.com/kaliiiiiiiiii/Selenium-Driverless/archive/refs/he
   <tr>
     <td  style="vertical-align: left>
       <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/scrapelesshq/scrapelesshq/main/images/scrapeless-dark.png">
-        <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/scrapelesshq/scrapelesshq/main/images/scrapeless-light.png">
-        <img alt="Scrapeless" src="https://raw.githubusercontent.com/scrapelesshq/scrapelesshq/main/images/scrapeless-light.png" height="300vh">
+        <source media="(prefers-color-scheme: dark)" srcset="https://assets.scrapeless.com/prod/posts/scrapeless-web-scraping-toolkit/67312c1916e76223195afe7a8653b990.png">
+        <source media="(prefers-color-scheme: light)" srcset="https://assets.scrapeless.com/prod/posts/scrapeless-web-scraping-toolkit/67312c1916e76223195afe7a8653b990.png">
+        <img alt="Scrapeless" src="https://assets.scrapeless.com/prod/posts/scrapeless-web-scraping-toolkit/67312c1916e76223195afe7a8653b990.png" height="300vh">
       </picture>
     </td>
     <td style="font-size: 0.9em; vertical-align: right;">
       <h4 align="center">
-        <b><a href="https://app.scrapeless.com/passport/login?utm_source=github&utm_medium=banner&utm_campaign=driverless">Get Started</a></b>
+        <b><a href="https://www.scrapeless.com/en?utm_source=github&utm_medium=banner&utm_campaign=driverless">Get Started</a></b>
       </h4>
       <ul style="text-align: center; padding-left: 0;">
         <li><a href="https://docs.scrapeless.com/en/overview/?utm_source=github&utm_medium=banner&utm_campaign=driverless">Docs</a></li>
