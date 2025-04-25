@@ -31,30 +31,9 @@ pip install https://github.com/kaliiiiiiiiii/Selenium-Driverless/archive/refs/he
 ```
 </details>
 
-
-#### Also, feel free to
-<a href="https://www.buymeacoffee.com/kaliiii">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://www.buymeacoffee.com/assets/img/custom_images/black_img.png" />
-    <source media="(prefers-color-scheme: light)" srcset="https://www.buymeacoffee.com/assets/img/custom_images/white_img.png" />
-    <img alt="Star History Chart" src="https://www.buymeacoffee.com/assets/img/custom_images/black_img.png" />
-  </picture>
-</a>
-
 ## Sponsors
 
-### [Capsolver](https://is.gd/pNs507)
-
-<a href="https://is.gd/IcYvAB" >
-  <img src="assets/CapSolver Ads.png" alt="drawing" width="60%"/>
-</a>
-
-<!--- 
-https://is.gd/stats.php?url=IcYvAB
---->
-
-An AI-powered captcha-solver service.
-
+This project is currently not being sponsored.
 
 ### Dependencies
 
@@ -219,7 +198,7 @@ asyncio.run(main())
 </details>
 
 ### Pointer Interaction
-see [@master/dev/show_mousemove.py](https://github.com/kaliiiiiiiiii/Selenium-Driverless/blob/master/dev/show_mousemove.py) for visualization
+see [@master/tests/show_mousemove.py](https://github.com/kaliiiiiiiiii/Selenium-Driverless/blob/master/tests/show_mousemove.py) for visualization
 
 ```python
 pointer = driver.current_pointer
