@@ -694,7 +694,7 @@ class WebElement(JSRemoteObj):
             the current implementation likely is detectable. It's recommended to use click instead if possible
         """
         script = (
-            "/* submitForm */var form = this;\n"
+            "/* submitForm */var form = obj;\n"
             'while (form.nodeName != "FORM" && form.parentNode) {\n'
             "  form = form.parentNode;\n"
             "}\n"
