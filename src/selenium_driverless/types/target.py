@@ -941,6 +941,169 @@ class Target:
             elems.append(elem)
         return elems
 
+    async def find(self, text: str, best_match: bool = True, timeout: float = 10) -> WebElement:
+        """Find a single element by text content (similar to nodriver.find())
+        
+        This method searches for elements containing the specified text and returns the best match.
+        When best_match=True, it returns the element with the closest text length match,
+        which helps avoid matching script contents or meta tags when looking for UI elements.
+        
+        :param text: The text to search for within elements
+        :param best_match: When True (default), returns the element with the most similar text length.
+                          When False, returns the first match found (faster but less accurate).
+        :param timeout: Maximum time in seconds to wait for the element to appear
+        :return: WebElement containing the specified text
+        :raises TimeoutError: If no element is found within the timeout period
+        """
+        start_time = time.perf_counter()
+        
+        while True:
+            try:
+                # Use CDP to search for elements containing the text
+                if not self._dom_enabled:
+                    await self.execute_cdp_cmd("DOM.enable")
+                
+                # Ensure DOM.getDocument got called
+                await self._document_elem
+                
+                # Search for text using CDP DOM.performSearch
+                res = await self.execute_cdp_cmd("DOM.performSearch", {
+                    "includeUserAgentShadowDOM": True, 
+                    "query": text
+                })
+                
+                search_id = res["searchId"]
+                elem_count = res["resultCount"]
+                
+                if elem_count <= 0:
+                    if time.perf_counter() - start_time >= timeout:
+                        raise TimeoutError(f"Element with text '{text}' not found within {timeout} seconds")
+                    await asyncio.sleep(0.1)
+                    continue
+                
+                # Get all matching nodes
+                res = await self.execute_cdp_cmd("DOM.getSearchResults", {
+                    "searchId": search_id, 
+                    "fromIndex": 0, 
+                    "toIndex": elem_count
+                })
+                
+                candidates = []
+                for node_id in res["nodeIds"]:
+                    try:
+                        if self._loop:
+                            elem = await SyncWebElement(target=self, node_id=node_id, loop=self._loop, 
+                                                      isolated_exec_id=None, frame_id=None)
+                        else:
+                            elem = await WebElement(target=self, node_id=node_id, loop=self._loop, 
+                                                  isolated_exec_id=None, frame_id=None)
+                        
+                        # Get the text content to validate match
+                        elem_text = await elem.text
+                        if text.lower() in elem_text.lower():
+                            candidates.append((elem, elem_text))
+                    except Exception:
+                        # Skip elements that can't be accessed
+                        continue
+                
+                if not candidates:
+                    if time.perf_counter() - start_time >= timeout:
+                        raise TimeoutError(f"Element with text '{text}' not found within {timeout} seconds")
+                    await asyncio.sleep(0.1)
+                    continue
+                
+                if not best_match:
+                    # Return first match
+                    return candidates[0][0]
+                
+                # Find best match by text length similarity
+                target_len = len(text)
+                best_elem = None
+                best_score = float('inf')
+                
+                for elem, elem_text in candidates:
+                    # Score based on text length difference (closer = better)
+                    score = abs(len(elem_text) - target_len)
+                    if score < best_score:
+                        best_score = score
+                        best_elem = elem
+                
+                return best_elem
+                
+            except TimeoutError:
+                raise
+            except Exception:
+                if time.perf_counter() - start_time >= timeout:
+                    raise TimeoutError(f"Element with text '{text}' not found within {timeout} seconds")
+                await asyncio.sleep(0.1)
+
+    async def find_all(self, text: str, timeout: float = 10) -> typing.List[WebElement]:
+        """Find all elements containing the specified text (similar to nodriver.find_all())
+        
+        This method searches for all elements containing the specified text.
+        
+        :param text: The text to search for within elements
+        :param timeout: Maximum time in seconds to wait for elements to appear
+        :return: List of WebElements containing the specified text
+        """
+        start_time = time.perf_counter()
+        
+        while True:
+            try:
+                # Use CDP to search for elements containing the text
+                if not self._dom_enabled:
+                    await self.execute_cdp_cmd("DOM.enable")
+                
+                # Ensure DOM.getDocument got called
+                await self._document_elem
+                
+                # Search for text using CDP DOM.performSearch
+                res = await self.execute_cdp_cmd("DOM.performSearch", {
+                    "includeUserAgentShadowDOM": True, 
+                    "query": text
+                })
+                
+                search_id = res["searchId"]
+                elem_count = res["resultCount"]
+                
+                if elem_count <= 0:
+                    if time.perf_counter() - start_time >= timeout:
+                        return []  # Return empty list if no elements found
+                    await asyncio.sleep(0.1)
+                    continue
+                
+                # Get all matching nodes
+                res = await self.execute_cdp_cmd("DOM.getSearchResults", {
+                    "searchId": search_id, 
+                    "fromIndex": 0, 
+                    "toIndex": elem_count
+                })
+                
+                elements = []
+                for node_id in res["nodeIds"]:
+                    try:
+                        if self._loop:
+                            elem = await SyncWebElement(target=self, node_id=node_id, loop=self._loop, 
+                                                      isolated_exec_id=None, frame_id=None)
+                        else:
+                            elem = await WebElement(target=self, node_id=node_id, loop=self._loop, 
+                                                  isolated_exec_id=None, frame_id=None)
+                        
+                        # Validate that the element actually contains the text
+                        elem_text = await elem.text
+                        if text.lower() in elem_text.lower():
+                            elements.append(elem)
+                    except Exception:
+                        # Skip elements that can't be accessed
+                        continue
+                
+                return elements
+                
+            except Exception:
+                if time.perf_counter() - start_time >= timeout:
+                    return []  # Return empty list if timeout
+                await asyncio.sleep(0.1)
+
     async def get_screenshot_as_file(self, filename: str) -> None:
         """Saves a screenshot of the current window to a PNG image file.
 

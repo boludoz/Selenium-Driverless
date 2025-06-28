@@ -1072,6 +1072,49 @@ class Chrome:
         """
         return await self.current_target.find_elements(by=by, value=value, timeout=timeout)
 
+    async def find(self, text: str, best_match: bool = True, timeout: float = 10) -> WebElement:
+        """Find a single element by text content (similar to nodriver.find())
+        
+        This method searches for elements containing the specified text and returns the best match.
+        When best_match=True, it returns the element with the closest text length match,
+        which helps avoid matching script contents or meta tags when looking for UI elements.
+        
+        :param text: The text to search for within elements
+        :param best_match: When True (default), returns the element with the most similar text length.
+                          When False, returns the first match found (faster but less accurate).
+        :param timeout: Maximum time in seconds to wait for the element to appear
+        :return: WebElement containing the specified text
+        :raises TimeoutError: If no element is found within the timeout period
+        
+        .. code-block:: python
+        
+            # Find a login button by text
+            login_btn = await driver.find("Login")
+            
+            # Find with exact text matching disabled for faster search
+            submit_btn = await driver.find("Submit", best_match=False)
+        """
+        return await self.current_target.find(text=text, best_match=best_match, timeout=timeout)
+
+    async def find_all(self, text: str, timeout: float = 10) -> typing.List[WebElement]:
+        """Find all elements containing the specified text (similar to nodriver.find_all())
+        
+        This method searches for all elements containing the specified text.
+        
+        :param text: The text to search for within elements
+        :param timeout: Maximum time in seconds to wait for elements to appear
+        :return: List of WebElements containing the specified text
+        
+        .. code-block:: python
+        
+            # Find all elements containing "button"
+            buttons = await driver.find_all("button")
+            
+            # Find all elements with "click" text
+            clickable_elements = await driver.find_all("click")
+        """
+        return await self.current_target.find_all(text=text, timeout=timeout)
+
     async def search_elements(self, query: str) -> typing.List[WebElement]:
         """
         find elements similarly to how "CTRL+F" in the DevTools Console works
