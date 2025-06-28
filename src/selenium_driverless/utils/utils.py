@@ -18,7 +18,6 @@ IS_POSIX = sys.platform.startswith(("darwin", "cygwin", "linux", "linux2"))
 T_JSON_DICT = typing.Dict[str, typing.Any]
 
 DATA_DIR = user_data_dir(appname="selenium-driverless", appauthor="kaliiiiiiiiii", ensure_exists=True)
-LICENSE = '\nThis project is licenced under "Attribution-NonCommercial-ShareAlike" as per https://github.com/kaliiiiiiiiii/Selenium-Driverless/blob/master/LICENSE.md#license\n'
 
 
 def find_chrome_executable():
@@ -115,12 +114,10 @@ async def is_first_run():
             return False
         else:
             await write(path, __version__, sel_root=False)
-            print(LICENSE, file=sys.stderr)
             # new version
             return None
     else:
         # first run
-        print(LICENSE, file=sys.stderr)
         await write(path, __version__, sel_root=False)
         return True
 
