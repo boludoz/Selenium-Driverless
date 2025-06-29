@@ -77,7 +77,7 @@ class Target:
 
     # noinspection PyShadowingBuiltins
     def __init__(self, host: str, target_id: str, driver, context, is_remote: bool = False,
-                 loop: asyncio.AbstractEventLoop or None = None, timeout: float = 30,
+                 loop: typing.Optional[asyncio.AbstractEventLoop] = None, timeout: float = 30,
                  type: str = None, start_socket: bool = False, max_ws_size: int = 2 ** 20) -> None:
         from selenium_driverless.types.context import Context
         self._parent_target = None
@@ -269,7 +269,7 @@ class Target:
             raise NoSuchIframe(iframe, "no target for iframe found")
         return targets[0]
 
-    async def wait_download(self, timeout: float or None = 30) -> dict:
+    async def wait_download(self, timeout: typing.Optional[float] = 30) -> dict:
         """
         wait for a download on the current tab
 
@@ -852,7 +852,7 @@ class Target:
         return self._document_elem_
 
     # noinspection PyUnusedLocal
-    async def find_element(self, by: str, value: str, timeout: float or None = None) -> WebElement:
+    async def find_element(self, by: str, value: str, timeout: typing.Optional[float] = None) -> WebElement:
         """find an element in the current target
 
         :param by: one of the locators at :func:`By <selenium_driverless.types.by.By>`
@@ -941,7 +941,7 @@ class Target:
             elems.append(elem)
         return elems
 
-    async def find(self, text: str, best_match: bool = True, timeout: float = 10) -> WebElement:
+    async def find(self, text: str, best_match: bool = True, return_enclosing_element: bool = True, timeout: float = 10) -> WebElement:
         """Find a single element by text content (similar to nodriver.find())
         
         This method searches for elements containing the specified text and returns the best match.
@@ -951,85 +951,114 @@ class Target:
         :param text: The text to search for within elements
         :param best_match: When True (default), returns the element with the most similar text length.
                           When False, returns the first match found (faster but less accurate).
+        :param return_enclosing_element: When True (default), returns the containing element instead of
+                                       the text node itself. This is usually what you want for UI interactions.
         :param timeout: Maximum time in seconds to wait for the element to appear
         :return: WebElement containing the specified text
         :raises TimeoutError: If no element is found within the timeout period
         """
         start_time = time.perf_counter()
+        text = text.strip()
         
         while True:
             try:
-                # Use CDP to search for elements containing the text
+                # Ensure DOM is enabled
                 if not self._dom_enabled:
                     await self.execute_cdp_cmd("DOM.enable")
-                
+
                 # Ensure DOM.getDocument got called
                 await self._document_elem
-                
-                # Search for text using CDP DOM.performSearch
-                res = await self.execute_cdp_cmd("DOM.performSearch", {
-                    "includeUserAgentShadowDOM": True, 
-                    "query": text
-                })
-                
+
+                res = await self.execute_cdp_cmd("DOM.performSearch",
+                                               {"includeUserAgentShadowDOM": True, "query": text})
                 search_id = res["searchId"]
                 elem_count = res["resultCount"]
                 
                 if elem_count <= 0:
+                    await self.execute_cdp_cmd("DOM.discardSearchResults", {"searchId": search_id})
                     if time.perf_counter() - start_time >= timeout:
                         raise TimeoutError(f"Element with text '{text}' not found within {timeout} seconds")
                     await asyncio.sleep(0.1)
                     continue
-                
-                # Get all matching nodes
-                res = await self.execute_cdp_cmd("DOM.getSearchResults", {
-                    "searchId": search_id, 
-                    "fromIndex": 0, 
+
+                results_res = await self.execute_cdp_cmd("DOM.getSearchResults", {
+                    "searchId": search_id,
+                    "fromIndex": 0,
                     "toIndex": elem_count
                 })
                 
-                candidates = []
-                for node_id in res["nodeIds"]:
-                    try:
-                        if self._loop:
-                            elem = await SyncWebElement(target=self, node_id=node_id, loop=self._loop, 
-                                                      isolated_exec_id=None, frame_id=None)
-                        else:
-                            elem = await WebElement(target=self, node_id=node_id, loop=self._loop, 
-                                                  isolated_exec_id=None, frame_id=None)
-                        
-                        # Get the text content to validate match
-                        elem_text = await elem.text
-                        if text.lower() in elem_text.lower():
-                            candidates.append((elem, elem_text))
-                    except Exception:
-                        # Skip elements that can't be accessed
-                        continue
-                
-                if not candidates:
+                await self.execute_cdp_cmd("DOM.discardSearchResults", {"searchId": search_id})
+
+                if not results_res.get("nodeIds"):
                     if time.perf_counter() - start_time >= timeout:
                         raise TimeoutError(f"Element with text '{text}' not found within {timeout} seconds")
                     await asyncio.sleep(0.1)
                     continue
-                
-                if not best_match:
-                    # Return first match
+
+                elements = []
+                elem_class = SyncWebElement if self._loop else WebElement
+
+                for node_id in results_res["nodeIds"]:
+                    try:
+                        node_res = await self.execute_cdp_cmd("DOM.describeNode", {"nodeId": node_id})
+                        node = node_res["node"]
+
+                        frame_id = node.get("frameId")
+                        if not frame_id:
+                            base_frame = await self.base_frame
+                            if base_frame:
+                                frame_id = str(base_frame.get("id"))
+
+                        elem = await elem_class(target=self, node_id=node_id, loop=self._loop, isolated_exec_id=None,
+                                                frame_id=frame_id)
+
+                        if node.get("nodeType") == 3:  # Text node
+                            if return_enclosing_element:
+                                parent = await elem.parent
+                                if parent:
+                                    elements.append(parent)
+                            else:
+                                elements.append(elem)
+                        else:  # Element node
+                            elements.append(elem)
+                    except Exception:
+                        continue
+
+                # Remove duplicates while preserving order
+                unique_elements = []
+                seen_node_ids = set()
+                for elem in elements:
+                    try:
+                        elem_node_id = await elem.node_id
+                        if elem_node_id not in seen_node_ids:
+                            unique_elements.append(elem)
+                            seen_node_ids.add(elem_node_id)
+                    except Exception:
+                        unique_elements.append(elem)
+
+                if not unique_elements:
+                    if time.perf_counter() - start_time >= timeout:
+                        raise TimeoutError(f"Element with text '{text}' not found within {timeout} seconds")
+                    await asyncio.sleep(0.1)
+                    continue
+
+                if best_match:
+                    candidates = []
+                    for elem in unique_elements:
+                        try:
+                            elem_text = await elem.text
+                            candidates.append((elem, abs(len(elem_text.strip()) - len(text))))
+                        except Exception:
+                            continue
+
+                    if not candidates:
+                        return unique_elements[0]
+
+                    candidates.sort(key=lambda x: x[1])
                     return candidates[0][0]
-                
-                # Find best match by text length similarity
-                target_len = len(text)
-                best_elem = None
-                best_score = float('inf')
-                
-                for elem, elem_text in candidates:
-                    # Score based on text length difference (closer = better)
-                    score = abs(len(elem_text) - target_len)
-                    if score < best_score:
-                        best_score = score
-                        best_elem = elem
-                
-                return best_elem
-                
+                else:
+                    return unique_elements[0]
+                    
             except TimeoutError:
                 raise
             except Exception:
@@ -1047,62 +1076,94 @@ class Target:
         :return: List of WebElements containing the specified text
         """
         start_time = time.perf_counter()
+        text = text.strip()
         
         while True:
             try:
-                # Use CDP to search for elements containing the text
+                # Ensure DOM is enabled
                 if not self._dom_enabled:
                     await self.execute_cdp_cmd("DOM.enable")
-                
+
                 # Ensure DOM.getDocument got called
                 await self._document_elem
-                
-                # Search for text using CDP DOM.performSearch
-                res = await self.execute_cdp_cmd("DOM.performSearch", {
-                    "includeUserAgentShadowDOM": True, 
-                    "query": text
-                })
-                
+
+                res = await self.execute_cdp_cmd("DOM.performSearch",
+                                               {"includeUserAgentShadowDOM": True, "query": text})
                 search_id = res["searchId"]
                 elem_count = res["resultCount"]
                 
                 if elem_count <= 0:
+                    await self.execute_cdp_cmd("DOM.discardSearchResults", {"searchId": search_id})
                     if time.perf_counter() - start_time >= timeout:
-                        return []  # Return empty list if no elements found
+                        return []
                     await asyncio.sleep(0.1)
                     continue
-                
-                # Get all matching nodes
-                res = await self.execute_cdp_cmd("DOM.getSearchResults", {
-                    "searchId": search_id, 
-                    "fromIndex": 0, 
+
+                results_res = await self.execute_cdp_cmd("DOM.getSearchResults", {
+                    "searchId": search_id,
+                    "fromIndex": 0,
                     "toIndex": elem_count
                 })
                 
+                await self.execute_cdp_cmd("DOM.discardSearchResults", {"searchId": search_id})
+
+                if not results_res.get("nodeIds"):
+                    if time.perf_counter() - start_time >= timeout:
+                        return []
+                    await asyncio.sleep(0.1)
+                    continue
+
                 elements = []
-                for node_id in res["nodeIds"]:
+                elem_class = SyncWebElement if self._loop else WebElement
+
+                for node_id in results_res["nodeIds"]:
                     try:
-                        if self._loop:
-                            elem = await SyncWebElement(target=self, node_id=node_id, loop=self._loop, 
-                                                      isolated_exec_id=None, frame_id=None)
-                        else:
-                            elem = await WebElement(target=self, node_id=node_id, loop=self._loop, 
-                                                  isolated_exec_id=None, frame_id=None)
-                        
-                        # Validate that the element actually contains the text
-                        elem_text = await elem.text
-                        if text.lower() in elem_text.lower():
+                        node_res = await self.execute_cdp_cmd("DOM.describeNode", {"nodeId": node_id})
+                        node = node_res["node"]
+
+                        frame_id = node.get("frameId")
+                        if not frame_id:
+                            base_frame = await self.base_frame
+                            if base_frame:
+                                frame_id = str(base_frame.get("id"))
+
+                        elem = await elem_class(target=self, node_id=node_id, loop=self._loop, isolated_exec_id=None,
+                                                frame_id=frame_id)
+
+                        if node.get("nodeType") == 3:  # Text node
+                            parent = await elem.parent
+                            if parent:
+                                elements.append(parent)
+                        else:  # Element node
                             elements.append(elem)
                     except Exception:
-                        # Skip elements that can't be accessed
                         continue
-                
-                return elements
+
+                # Remove duplicates while preserving order
+                unique_elements = []
+                seen_node_ids = set()
+                for elem in elements:
+                    try:
+                        elem_node_id = await elem.node_id
+                        if elem_node_id not in seen_node_ids:
+                            unique_elements.append(elem)
+                            seen_node_ids.add(elem_node_id)
+                    except Exception:
+                        unique_elements.append(elem)
+
+                if unique_elements:
+                    return unique_elements
+                    
+                if time.perf_counter() - start_time >= timeout:
+                    return []
+                await asyncio.sleep(0.1)
                 
             except Exception:
                 if time.perf_counter() - start_time >= timeout:
-                    return []  # Return empty list if timeout
+                    return []
                 await asyncio.sleep(0.1)
+
+
 
     async def get_screenshot_as_file(self, filename: str) -> None:
         """Saves a screenshot of the current window to a PNG image file.
@@ -1203,7 +1264,7 @@ class Target:
         """Resets Chromium network emulation settings."""
         raise NotImplementedError("not started with chromedriver")
 
-    async def wait_for_cdp(self, event: str, timeout: float or None = None) -> dict:
+    async def wait_for_cdp(self, event: str, timeout: typing.Optional[float] = None) -> dict:
         """
         wait for a CDP event and return the data
         :param event: the name of the event
@@ -1257,8 +1318,8 @@ class Target:
             await self._init()
         return self.socket.method_iterator(method=event)
 
-    async def execute_cdp_cmd(self, cmd: str, cmd_args: dict or None = None,
-                              timeout: float or None = 10) -> dict:
+    async def execute_cdp_cmd(self, cmd: str, cmd_args: typing.Optional[dict] = None,
+                              timeout: typing.Optional[float] = 10) -> dict:
         """Execute Chrome Devtools Protocol command and get returned result The
         command and command args should follow chrome devtools protocol
         domains/commands, refer to link
@@ -1569,7 +1630,7 @@ class TargetInfo:
         the infos are not dynamic
     """
 
-    def __init__(self, target_info: dict, target_getter: asyncio.Future or Target):
+    def __init__(self, target_info: dict, target_getter: typing.Union[asyncio.Future, Target]):
         self._id = target_info.get('targetId')
         self._type = target_info.get("type")
         self._title = target_info.get("title")
