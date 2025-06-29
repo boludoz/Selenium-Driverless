@@ -769,7 +769,7 @@ class Target:
         page = await self.execute_cdp_cmd("Page.printToPDF")
         return page["data"]
 
-    async def get_history(self) -> TypedDict('NavigationHistory', {'currentIndex': int, 'entries': list}):
+    async def get_history(self) -> dict:
         """returns the history data
 
         see `Page.getNavigationHistory <https://chromedevtools.github.io/devtools-protocol/tot/Page/#method-getNavigationHistory>`__
